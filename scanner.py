@@ -9,9 +9,15 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def get_klines(symbol):
     url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval=1h&limit=100"
-    r = requests.get(url).json()
 
-    df = pd.DataFrame(r, columns=[
+    r = requests.get(url, timeout=10)
+
+    if r.status_code != 200:
+        raise Exception(f"Binance API Hatası: {r.text}")
+
+    data = r.json()
+
+    df = pd.DataFrame(data, columns=[
         "time","open","high","low","close","volume",
         "close_time","qav","trades","tbav","tqav","ignore"
     ])
@@ -48,34 +54,48 @@ def score_coin(symbol):
             "price": round(df["close"].iloc[-1], 4)
         }
 
-    except:
+    except Exception as e:
+        print(f"HATA -> {symbol}: {e}")
         return None
 
 coins = []
 
-with open("coins.txt") as f:
+with open("coins.txt", "r") as f:
     for line in f:
         coin = line.strip().upper()
+
         if coin:
             coins.append(coin)
+
+print(f"{len(coins)} coin yüklendi")
 
 results = []
 
 for coin in coins:
-    r = score_coin(coin)
-    if r:
-        results.append(r)
+    result = score_coin(coin)
 
-results = sorted(results, key=lambda x: x["score"], reverse=True)[:3]
+    if result:
+        results.append(result)
+
+print(f"Başarılı coin sayısı: {len(results)}")
+
+results = sorted(results, key=lambda x: x["score"], reverse=True)
+
+top3 = results[:3]
 
 message = "🚀 EN İYİ 3 FIRSAT\n\n"
 
-for i, coin in enumerate(results, start=1):
-    message += (
-        f"{i}. {coin['symbol']}\n"
-        f"Puan: {coin['score']}/100\n"
-        f"Fiyat: {coin['price']}\n\n"
-    )
+if len(top3) == 0:
+    message += "Uygun coin bulunamadı."
+else:
+    for i, coin in enumerate(top3, start=1):
+        message += (
+            f"{i}. {coin['symbol']}\n"
+            f"Puan: {coin['score']}/100\n"
+            f"Fiyat: {coin['price']}\n\n"
+        )
+
+print(message)
 
 requests.post(
     f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
@@ -84,5 +104,3 @@ requests.post(
         "text": message
     }
 )
-
-print(message)
