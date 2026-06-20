@@ -79,9 +79,14 @@ def score_coin(symbol):
         score = 0
 
         # Trend
-        if ema20.iloc[-1] > ema50.iloc[-1]:
-            score += 40
+        ema200 = EMAIndicator(
+    close=df["close"],
+    window=200
+).ema_indicator()
 
+if ema20.iloc[-1] > ema50.iloc[-1] > ema200.iloc[-1]:
+    score += 40
+    
         # RSI
         if 50 <= rsi.iloc[-1] <= 70:
             score += 30
@@ -89,8 +94,8 @@ def score_coin(symbol):
         # Hacim
         avg_vol = df["volume"].tail(20).mean()
 
-        if df["volume"].iloc[-1] > avg_vol:
-            score += 30
+        if df["volume"].iloc[-1] > avg_vol * 1.5:
+    score += 30
 
         return {
             "symbol": symbol,
@@ -123,8 +128,7 @@ for coin in coins:
         results.append(result)
 
 # 70 puan üstü coinler
-results = [x for x in results if x["score"] >= 70]
-
+results = [x for x in results if x["score"] >= 80]
 results = sorted(
     results,
     key=lambda x: x["score"],
