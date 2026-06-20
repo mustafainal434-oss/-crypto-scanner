@@ -58,7 +58,7 @@ def score_coin(symbol):
         if df is None:
             return None
 
-        if len(df) < 200:
+        if len(df) < 50:
             return None
 
         ema20 = EMAIndicator(
@@ -71,11 +71,6 @@ def score_coin(symbol):
             window=50
         ).ema_indicator()
 
-        ema200 = EMAIndicator(
-            close=df["close"],
-            window=200
-        ).ema_indicator()
-
         rsi = RSIIndicator(
             close=df["close"],
             window=14
@@ -84,17 +79,17 @@ def score_coin(symbol):
         score = 0
 
         # Trend
-        if ema20.iloc[-1] > ema50.iloc[-1] > ema200.iloc[-1]:
+        if ema20.iloc[-1] > ema50.iloc[-1]:
             score += 40
 
         # RSI
-        if 50 <= rsi.iloc[-1] <= 70:
+        if 45 <= rsi.iloc[-1] <= 65:
             score += 30
 
         # Hacim
         avg_vol = df["volume"].tail(20).mean()
 
-        if df["volume"].iloc[-1] > avg_vol * 1.5:
+        if df["volume"].iloc[-1] > avg_vol:
             score += 30
 
         return {
@@ -127,13 +122,14 @@ for coin in coins:
     if result:
         results.append(result)
 
-results = [x for x in results if x["score"] >= 70]
+# Minimum güven puanı
+results = [x for x in results if x["score"] >= 60]
 
 results = sorted(
     results,
     key=lambda x: x["score"],
     reverse=True
-)[:5]
+)[:10]
 
 message = "🚀 GÜÇLÜ LONG ADAYLARI\n\n"
 
@@ -141,11 +137,12 @@ if len(results) == 0:
     message += "Bugün güçlü sinyal bulunamadı."
 
 else:
+
     for i, coin in enumerate(results, start=1):
 
         entry = coin["price"]
-        stop = round(entry * 0.97, 6)
-        tp = round(entry * 1.06, 6)
+        stop = round(entry * 0.98, 6)
+        tp = round(entry * 1.05, 6)
 
         message += (
             f"{i}. {coin['symbol']}\n"
